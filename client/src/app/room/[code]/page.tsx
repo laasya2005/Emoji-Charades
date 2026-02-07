@@ -1,0 +1,174 @@
+"use client";
+import { useEffect, useRef, Suspense } from "react";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
+import { useSocket } from "@/hooks/useSocket";
+import Lobby from "@/components/Lobby";
+import GameBoard from "@/components/GameBoard";
+import EmojiPickerPanel from "@/components/EmojiPicker";
+import ChatBox from "@/components/ChatBox";
+import Scoreboard from "@/components/Scoreboard";
+import TurnEndModal from "@/components/TurnEndModal";
+import GameEndModal from "@/components/GameEndModal";
+
+function RoomContent() {
+  const params = useParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const code = params.code as string;
+  const name = searchParams.get("name") || "Player";
+  const action = searchParams.get("action") || "join";
+
+  const {
+    roomState,
+    error,
+    setError,
+    createRoom,
+    joinRoom,
+    startGame,
+    updateSettings,
+    updateEmojis,
+    submitGuess,
+    returnToLobby,
+    getSocketId,
+  } = useSocket();
+
+  const initRef = useRef(false);
+
+  useEffect(() => {
+    if (initRef.current) return;
+    initRef.current = true;
+
+    (async () => {
+      if (action === "create") {
+        const res = await createRoom(name);
+        if (res.success && res.code) {
+          window.history.replaceState(null, "", `/room/${res.code}?name=${encodeURIComponent(name)}`);
+        } else {
+          setError(res.error || "Failed to create room");
+        }
+      } else {
+        const res = await joinRoom(code, name);
+        if (!res.success) {
+          setError(res.error || "Failed to join room");
+        }
+      }
+    })();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const socketId = getSocketId();
+  const isHost = roomState?.hostId === socketId;
+  const isActor = roomState?.currentActorId === socketId;
+  const hasGuessedCorrectly = roomState?.correctGuessers?.includes(socketId) || false;
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="bg-slate-800 rounded-2xl p-8 max-w-md text-center">
+          <p className="text-red-400 text-lg mb-4">{error}</p>
+          <button
+            onClick={() => router.push("/")}
+            className="text-indigo-400 hover:text-indigo-300 underline"
+          >
+            Back to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!roomState) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-4xl mb-4 animate-bounce">🎬</div>
+          <p className="text-slate-400 text-lg">Connecting to room...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (roomState.phase === "LOBBY") {
+    return (
+      <div className="p-4">
+        <Lobby
+          state={roomState}
+          isHost={isHost}
+          onStart={startGame}
+          onUpdateSettings={updateSettings}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-screen flex flex-col p-2 gap-2">
+      {/* Actor word banner — always visible at the very top */}
+      {isActor && roomState.currentWord && (
+        <div className="bg-indigo-900/50 border-2 border-indigo-500 rounded-lg px-4 py-2 text-center shrink-0">
+          <span className="text-xs text-indigo-300 uppercase tracking-wider">Act this out</span>
+          <p className="text-2xl font-bold text-white">{roomState.currentWord}</p>
+        </div>
+      )}
+
+      <div className="flex-1 flex flex-col lg:flex-row gap-2 min-h-0">
+        {/* Main game area */}
+        <div className="flex-1 min-w-0 flex flex-col gap-2 min-h-0">
+          <GameBoard
+            state={roomState}
+            isActor={isActor}
+          />
+
+          <div className="flex-1 min-h-0 overflow-hidden">
+            {isActor ? (
+              <EmojiPickerPanel
+                emojis={roomState.emojis}
+                onUpdate={updateEmojis}
+              />
+            ) : (
+              <ChatBox
+                guesses={roomState.guesses}
+                onGuess={submitGuess}
+                disabled={roomState.phase !== "TURN_ACTIVE"}
+                hasGuessedCorrectly={hasGuessedCorrectly}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Sidebar */}
+        <div className="lg:w-48 shrink-0">
+          <Scoreboard
+            players={roomState.players}
+            currentActorId={roomState.currentActorId}
+          />
+        </div>
+      </div>
+
+      {roomState.phase === "TURN_END" && roomState.turnResult && (
+        <TurnEndModal result={roomState.turnResult} />
+      )}
+
+      {roomState.phase === "GAME_END" && roomState.finalStandings && (
+        <GameEndModal
+          standings={roomState.finalStandings}
+          isHost={isHost}
+          onReturnToLobby={returnToLobby}
+        />
+      )}
+    </div>
+  );
+}
+
+export default function RoomPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <p className="text-slate-400">Loading...</p>
+        </div>
+      }
+    >
+      <RoomContent />
+    </Suspense>
+  );
+}
