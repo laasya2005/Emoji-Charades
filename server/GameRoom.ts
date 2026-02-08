@@ -4,8 +4,9 @@ import { getGuesserPoints, getActorPoints } from "./scoring";
 // Constants
 const MAX_EMOJIS = 12;
 const MAX_PLAYERS = 12;
-const HINT_TIME = 30;
 const MAX_CORRECT_BEFORE_END = 3;
+const REVEAL_START_PCT = 0.20; // start revealing at 20% elapsed
+const REVEAL_END_PCT = 0.85;   // finish revealing at 85% elapsed
 const TURN_END_DELAY_MS = 5000;
 
 export type GamePhase = "LOBBY" | "TURN_ACTIVE" | "TURN_END" | "GAME_END";
@@ -49,7 +50,7 @@ export interface RoomStateSnapshot {
   timeRemaining: number;
   guesses: GuessMessage[];
   correctGuessers: string[];
-  hint: { wordCount: number; wordLengths: number[] } | null;
+  hint: { display: string } | null;
   turnResult: TurnResult | null;
   currentWord?: string;
   finalStandings?: Player[];
@@ -74,7 +75,8 @@ export class GameRoom {
   private turnTimer: NodeJS.Timeout | null = null;
   private turnEndTimeout: NodeJS.Timeout | null = null;
   turnResult: TurnResult | null = null;
-  hint: { wordCount: number; wordLengths: number[] } | null = null;
+  private revealOrder: number[] = [];
+  private revealableCount = 0;
 
   private onStateChange: () => void;
 
@@ -199,8 +201,17 @@ export class GameRoom {
     this.guesses = [];
     this.correctGuessers = [];
     this.turnResult = null;
-    this.hint = null;
     this.timeRemaining = this.settings.turnDuration;
+
+    // Build shuffled reveal order for letter positions
+    const indices: number[] = [];
+    for (let i = 0; i < this.currentWord.length; i++) {
+      if (/[a-zA-Z0-9]/.test(this.currentWord[i])) {
+        indices.push(i);
+      }
+    }
+    this.revealOrder = shuffleArray(indices);
+    this.revealableCount = indices.length;
     this.phase = "TURN_ACTIVE";
 
     this.onStateChange();
@@ -222,14 +233,6 @@ export class GameRoom {
     this.turnTimer = setInterval(() => {
       this.timeRemaining--;
 
-      if (this.timeRemaining === HINT_TIME && !this.hint) {
-        const words = this.currentWord.split(/\s+/);
-        this.hint = {
-          wordCount: words.length,
-          wordLengths: words.map((w) => w.replace(/[^a-zA-Z0-9]/g, "").length),
-        };
-      }
-
       if (this.timeRemaining <= 0) {
         this.clearAllTimers();
         this.endTurn();
@@ -237,6 +240,38 @@ export class GameRoom {
         this.onStateChange();
       }
     }, 1000);
+  }
+
+  private getHintDisplay(): string {
+    const duration = this.settings.turnDuration;
+    const elapsed = duration - this.timeRemaining;
+    const startAt = duration * REVEAL_START_PCT;
+    const endAt = duration * REVEAL_END_PCT;
+
+    let lettersToReveal = 0;
+    if (elapsed > startAt && this.revealableCount > 0) {
+      const progress = Math.min((elapsed - startAt) / (endAt - startAt), 1);
+      lettersToReveal = Math.floor(progress * this.revealableCount);
+    }
+
+    const revealed = new Set(this.revealOrder.slice(0, lettersToReveal));
+    let display = "";
+    for (let i = 0; i < this.currentWord.length; i++) {
+      const ch = this.currentWord[i];
+      if (ch === " ") {
+        display += "   ";
+      } else if (!/[a-zA-Z0-9]/.test(ch)) {
+        display += ch;
+      } else if (revealed.has(i)) {
+        display += ch.toUpperCase();
+      } else {
+        display += "_";
+      }
+      if (i < this.currentWord.length - 1 && this.currentWord[i + 1] !== " " && ch !== " ") {
+        display += " ";
+      }
+    }
+    return display;
   }
 
   private clearAllTimers(): void {
@@ -363,7 +398,8 @@ export class GameRoom {
     this.guesses = [];
     this.correctGuessers = [];
     this.turnResult = null;
-    this.hint = null;
+    this.revealOrder = [];
+    this.revealableCount = 0;
     this.onStateChange();
   }
 
@@ -384,9 +420,9 @@ export class GameRoom {
       currentActorId: this.currentActorId,
       emojis: this.emojis,
       timeRemaining: this.timeRemaining,
-      guesses: isActor ? [] : this.guesses,
+      guesses: this.guesses,
       correctGuessers: this.correctGuessers,
-      hint: this.hint,
+      hint: this.phase === "TURN_ACTIVE" ? { display: this.getHintDisplay() } : null,
       turnResult: this.turnResult,
       currentWord: isActor ? this.currentWord : undefined,
       finalStandings:

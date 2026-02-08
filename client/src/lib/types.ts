@@ -37,7 +37,7 @@ export interface RoomState {
   timeRemaining: number;
   guesses: GuessMessage[];
   correctGuessers: string[];
-  hint: { wordCount: number; wordLengths: number[] } | null;
+  hint: { display: string } | null;
   turnResult: TurnResult | null;
   currentWord?: string;
   finalStandings?: Player[];

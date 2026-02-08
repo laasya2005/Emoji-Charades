@@ -118,12 +118,46 @@ function RoomContent() {
             isActor={isActor}
           />
 
-          <div className="flex-1 min-h-0 overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-2">
             {isActor ? (
-              <EmojiPickerPanel
-                emojis={roomState.emojis}
-                onUpdate={updateEmojis}
-              />
+              <>
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  <EmojiPickerPanel
+                    emojis={roomState.emojis}
+                    onUpdate={updateEmojis}
+                  />
+                </div>
+                {/* Actor can see guesses (read-only) */}
+                <div className="h-36 shrink-0 bg-slate-800 rounded-lg flex flex-col">
+                  <div className="px-3 py-1.5 border-b border-slate-700">
+                    <h3 className="font-semibold text-xs text-slate-400">Player Guesses</h3>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                    {roomState.guesses.length === 0 && (
+                      <p className="text-slate-500 text-xs text-center mt-2">No guesses yet...</p>
+                    )}
+                    {roomState.guesses.map((msg, i) => (
+                      <div
+                        key={i}
+                        className={`text-xs rounded px-2 py-1 ${
+                          msg.system
+                            ? "bg-green-900/30 text-green-400 font-semibold"
+                            : "bg-slate-700"
+                        }`}
+                      >
+                        {msg.system ? (
+                          msg.text
+                        ) : (
+                          <>
+                            <span className="font-semibold text-indigo-400">{msg.playerName}: </span>
+                            {msg.text}
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
             ) : (
               <ChatBox
                 guesses={roomState.guesses}

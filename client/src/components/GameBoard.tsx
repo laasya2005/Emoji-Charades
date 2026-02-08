@@ -67,11 +67,11 @@ export default function GameBoard({ state, isActor }: GameBoardProps) {
         </div>
       )}
 
-      {/* Hint */}
+      {/* Hint — progressive letter reveal */}
       {state.hint && !isActor && (
         <div className="bg-yellow-900/30 border border-yellow-600/50 rounded-lg px-2 py-2 text-center" role="status">
           <span className="text-yellow-400 text-sm font-mono tracking-widest">
-            {state.hint.wordLengths.map((len) => "_ ".repeat(len).trim()).join("   ")}
+            {state.hint.display}
           </span>
         </div>
       )}
