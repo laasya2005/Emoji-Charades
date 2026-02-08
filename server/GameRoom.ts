@@ -5,8 +5,9 @@ import { getGuesserPoints, getActorPoints } from "./scoring";
 const MAX_EMOJIS = 12;
 const MAX_PLAYERS = 12;
 const MAX_CORRECT_BEFORE_END = 3;
-const REVEAL_START_PCT = 0.20; // start revealing at 20% elapsed
-const REVEAL_END_PCT = 0.85;   // finish revealing at 85% elapsed
+const REVEAL_START_PCT = 0.35; // start revealing at 35% elapsed
+const REVEAL_END_PCT = 0.90;   // stop revealing at 90% elapsed
+const REVEAL_MAX_PCT = 0.50;   // never reveal more than 50% of letters
 const TURN_END_DELAY_MS = 5000;
 
 export type GamePhase = "LOBBY" | "TURN_ACTIVE" | "TURN_END" | "GAME_END";
@@ -251,7 +252,8 @@ export class GameRoom {
     let lettersToReveal = 0;
     if (elapsed > startAt && this.revealableCount > 0) {
       const progress = Math.min((elapsed - startAt) / (endAt - startAt), 1);
-      lettersToReveal = Math.floor(progress * this.revealableCount);
+      const maxReveal = Math.floor(this.revealableCount * REVEAL_MAX_PCT);
+      lettersToReveal = Math.floor(progress * maxReveal);
     }
 
     const revealed = new Set(this.revealOrder.slice(0, lettersToReveal));

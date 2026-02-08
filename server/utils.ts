@@ -14,8 +14,7 @@ export function normalizeAnswer(input: string): string {
   return input
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9\s]/g, "")
-    .replace(/\s+/g, " ");
+    .replace(/[^a-z0-9]/g, "");
 }
 
 export function shuffleArray<T>(arr: T[]): T[] {
