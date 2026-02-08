@@ -4,16 +4,26 @@ import { Player } from "@/lib/types";
 interface ScoreboardProps {
   players: Player[];
   currentActorId?: string;
+  roomOnline?: number;
+  maxPlayers?: number;
 }
 
-export default function Scoreboard({ players, currentActorId }: ScoreboardProps) {
+export default function Scoreboard({ players, currentActorId, roomOnline, maxPlayers }: ScoreboardProps) {
   const sorted = [...players].sort((a, b) => b.score - a.score);
 
   return (
     <div className="bg-slate-800 rounded-lg p-2">
-      <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1.5 px-1">
-        Scoreboard
-      </h3>
+      <div className="flex items-center justify-between mb-1.5 px-1">
+        <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+          Scoreboard
+        </h3>
+        {roomOnline != null && roomOnline > 0 && (
+          <span className="text-[10px] text-emerald-400">
+            <span className="inline-block w-1.5 h-1.5 bg-emerald-400 rounded-full mr-0.5 animate-pulse" />
+            {roomOnline}/{maxPlayers}
+          </span>
+        )}
+      </div>
       <div className="space-y-1">
         {sorted.map((p, i) => (
           <div

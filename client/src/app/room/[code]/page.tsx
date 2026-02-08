@@ -22,6 +22,8 @@ function RoomContent() {
     roomState,
     error,
     setError,
+    roomOnline,
+    maxPlayers,
     createRoom,
     joinRoom,
     startGame,
@@ -93,6 +95,8 @@ function RoomContent() {
         <Lobby
           state={roomState}
           isHost={isHost}
+          roomOnline={roomOnline}
+          maxPlayers={maxPlayers}
           onStart={startGame}
           onUpdateSettings={updateSettings}
         />
@@ -174,6 +178,8 @@ function RoomContent() {
           <Scoreboard
             players={roomState.players}
             currentActorId={roomState.currentActorId}
+            roomOnline={roomOnline}
+            maxPlayers={maxPlayers}
           />
         </div>
       </div>

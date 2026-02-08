@@ -31,27 +31,49 @@ export function useSocket() {
   const [roomState, setRoomState] = useState<RoomState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
+  const [globalOnline, setGlobalOnline] = useState(0);
+  const [roomOnline, setRoomOnline] = useState(0);
+  const [maxPlayers, setMaxPlayers] = useState(12);
 
   useEffect(() => {
     const socket = getSocket();
 
-    const onConnect = () => setConnected(true);
-    const onDisconnect = () => setConnected(false);
+    const onConnect = () => {
+      setConnected(true);
+      // Request current stats on (re)connect so we never stay stale at 0
+      socket.emit("request-stats");
+    };
+    const onDisconnect = () => {
+      setConnected(false);
+      setRoomOnline(0);
+    };
     const onRoomState = (state: RoomState) => setRoomState(state);
     const onError = (data: { message: string }) => setError(data.message);
+    const onGlobalStats = (data: { online: number }) => setGlobalOnline(data.online);
+    const onRoomStats = (data: { code: string; onlineInRoom: number; maxPlayers?: number }) => {
+      setRoomOnline(data.onlineInRoom);
+      if (data.maxPlayers != null) setMaxPlayers(data.maxPlayers);
+    };
 
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("room-state", onRoomState);
     socket.on("error-msg", onError);
+    socket.on("stats:global", onGlobalStats);
+    socket.on("stats:room", onRoomStats);
 
-    if (socket.connected) setConnected(true);
+    if (socket.connected) {
+      setConnected(true);
+      socket.emit("request-stats");
+    }
 
     return () => {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       socket.off("room-state", onRoomState);
       socket.off("error-msg", onError);
+      socket.off("stats:global", onGlobalStats);
+      socket.off("stats:room", onRoomStats);
     };
   }, []);
 
@@ -117,6 +139,9 @@ export function useSocket() {
     error,
     setError,
     connected,
+    globalOnline,
+    roomOnline,
+    maxPlayers,
     createRoom,
     joinRoom,
     startGame: useCallback(() => emit("start-game"), [emit]),

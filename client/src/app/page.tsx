@@ -1,9 +1,11 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSocket } from "@/hooks/useSocket";
 
 export default function Home() {
   const router = useRouter();
+  const { globalOnline } = useSocket();
   const [name, setName] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +28,13 @@ export default function Home() {
     <div className="flex items-center justify-center min-h-screen px-4">
       <div className="bg-slate-800 rounded-2xl p-8 w-full max-w-sm shadow-xl">
         <h1 className="text-4xl font-bold text-center mb-1">🎬 Emoji Charades</h1>
-        <p className="text-slate-400 text-center mb-6 text-sm">Act it out with emojis!</p>
+        <p className="text-slate-400 text-center mb-2 text-sm">Act it out with emojis!</p>
+        {globalOnline > 0 && (
+          <p className="text-center mb-4 text-xs text-emerald-400">
+            <span className="inline-block w-2 h-2 bg-emerald-400 rounded-full mr-1 animate-pulse" />
+            {globalOnline} online
+          </p>
+        )}
 
         {error && (
           <div

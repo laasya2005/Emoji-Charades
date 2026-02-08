@@ -4,11 +4,13 @@ import { RoomState } from "@/lib/types";
 interface LobbyProps {
   state: RoomState;
   isHost: boolean;
+  roomOnline: number;
+  maxPlayers: number;
   onStart: () => void;
   onUpdateSettings: (s: { roundsPerPlayer?: number; turnDuration?: number }) => void;
 }
 
-export default function Lobby({ state, isHost, onStart, onUpdateSettings }: LobbyProps) {
+export default function Lobby({ state, isHost, roomOnline, maxPlayers, onStart, onUpdateSettings }: LobbyProps) {
   const copyCode = () => {
     navigator.clipboard.writeText(state.code);
   };
@@ -27,6 +29,10 @@ export default function Lobby({ state, isHost, onStart, onUpdateSettings }: Lobb
           </button>
         </div>
         <p className="text-slate-400 text-sm mt-2">Share this code with friends</p>
+        <p className="text-xs text-emerald-400 mt-1">
+          <span className="inline-block w-2 h-2 bg-emerald-400 rounded-full mr-1 animate-pulse" />
+          In room: {roomOnline}/{maxPlayers}
+        </p>
       </div>
 
       <div className="bg-slate-800 rounded-xl p-4">
