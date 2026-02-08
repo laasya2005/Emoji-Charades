@@ -36,7 +36,11 @@ const io = new Server(server, {
 
 let movies: string[];
 try {
-  const dataPath = path.join(__dirname, "..", "categories.json");
+  // __dirname is server/ in dev (ts-node) or server/dist/ in prod (compiled)
+  let dataPath = path.join(__dirname, "..", "categories.json");
+  if (!fs.existsSync(dataPath)) {
+    dataPath = path.join(__dirname, "..", "..", "categories.json");
+  }
   const data = JSON.parse(fs.readFileSync(dataPath, "utf-8"));
   movies = data.Movies;
   if (!Array.isArray(movies) || movies.length === 0) {
