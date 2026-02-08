@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, Suspense } from "react";
+import { useEffect, useRef, Suspense, useCallback } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useSocket } from "@/hooks/useSocket";
 import Lobby from "@/components/Lobby";
@@ -9,6 +9,7 @@ import ChatBox from "@/components/ChatBox";
 import Scoreboard from "@/components/Scoreboard";
 import TurnEndModal from "@/components/TurnEndModal";
 import GameEndModal from "@/components/GameEndModal";
+import { trackEvent } from "@/lib/analytics";
 
 function RoomContent() {
   const params = useParams();
@@ -35,6 +36,8 @@ function RoomContent() {
   } = useSocket();
 
   const initRef = useRef(false);
+  const prevPhaseRef = useRef<string | null>(null);
+  const correctTrackedRef = useRef(false);
 
   useEffect(() => {
     if (initRef.current) return;
@@ -45,22 +48,66 @@ function RoomContent() {
         const res = await createRoom(name);
         if (res.success && res.code) {
           window.history.replaceState(null, "", `/room/${res.code}?name=${encodeURIComponent(name)}`);
+          trackEvent("join_room_success", { players_in_room: 1 });
         } else {
           setError(res.error || "Failed to create room");
         }
       } else {
         const res = await joinRoom(code, name);
-        if (!res.success) {
+        if (res.success) {
+          trackEvent("join_room_success");
+        } else {
           setError(res.error || "Failed to join room");
         }
       }
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Track phase transitions (game_started, game_end) — fire once per transition
+  useEffect(() => {
+    if (!roomState) return;
+    const prev = prevPhaseRef.current;
+    const curr = roomState.phase;
+    prevPhaseRef.current = curr;
+
+    if (prev === "LOBBY" && curr === "TURN_ACTIVE") {
+      trackEvent("game_started", {
+        players_in_room: roomState.players.length,
+        rounds: roomState.totalRounds,
+        turn_seconds: roomState.settings.turnDuration,
+      });
+    }
+
+    if (curr === "GAME_END" && prev !== "GAME_END") {
+      trackEvent("game_end", {
+        players_in_room: roomState.players.length,
+        rounds: roomState.totalRounds,
+      });
+    }
+
+    // Reset correct-guess flag on new turn
+    if (curr === "TURN_ACTIVE" && prev !== "TURN_ACTIVE") {
+      correctTrackedRef.current = false;
+    }
+  }, [roomState?.phase]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const socketId = getSocketId();
   const isHost = roomState?.hostId === socketId;
   const isActor = roomState?.currentActorId === socketId;
   const hasGuessedCorrectly = roomState?.correctGuessers?.includes(socketId) || false;
+
+  // Track correct guess once per turn
+  useEffect(() => {
+    if (hasGuessedCorrectly && !correctTrackedRef.current) {
+      correctTrackedRef.current = true;
+      trackEvent("guess_correct");
+    }
+  }, [hasGuessedCorrectly]);
+
+  const trackedGuess = useCallback((text: string) => {
+    trackEvent("guess_sent");
+    submitGuess(text);
+  }, [submitGuess]);
 
   if (error) {
     return (
@@ -165,7 +212,7 @@ function RoomContent() {
             ) : (
               <ChatBox
                 guesses={roomState.guesses}
-                onGuess={submitGuess}
+                onGuess={trackedGuess}
                 disabled={roomState.phase !== "TURN_ACTIVE"}
                 hasGuessedCorrectly={hasGuessedCorrectly}
               />

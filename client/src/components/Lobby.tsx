@@ -1,5 +1,6 @@
 "use client";
 import { RoomState } from "@/lib/types";
+import { trackEvent } from "@/lib/analytics";
 
 interface LobbyProps {
   state: RoomState;
@@ -96,7 +97,14 @@ export default function Lobby({ state, isHost, roomOnline, maxPlayers, onStart, 
 
       {isHost && (
         <button
-          onClick={onStart}
+          onClick={() => {
+            trackEvent("game_start_click", {
+              players_in_room: state.players.length,
+              rounds: state.settings.roundsPerPlayer,
+              turn_seconds: state.settings.turnDuration,
+            });
+            onStart();
+          }}
           disabled={state.players.length < 2}
           className="w-full py-4 bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-xl font-bold text-lg transition"
         >

@@ -1,11 +1,20 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSocket } from "@/hooks/useSocket";
+import { trackEvent } from "@/lib/analytics";
 
 export default function Home() {
   const router = useRouter();
   const { globalOnline } = useSocket();
+  const viewTracked = useRef(false);
+
+  useEffect(() => {
+    if (viewTracked.current) return;
+    viewTracked.current = true;
+    trackEvent("home_view");
+  }, []);
+
   const [name, setName] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -13,12 +22,14 @@ export default function Home() {
 
   const handleCreate = () => {
     if (!name.trim()) return setError("Please enter your name");
+    trackEvent("create_room_click");
     router.push(`/room/NEW?name=${encodeURIComponent(name.trim())}&action=create`);
   };
 
   const handleJoin = () => {
     if (!name.trim()) return setError("Please enter your name");
     if (!joinCode.trim()) return setError("Please enter the room code");
+    trackEvent("join_room_attempt");
     router.push(
       `/room/${joinCode.trim().toUpperCase()}?name=${encodeURIComponent(name.trim())}&action=join`
     );
