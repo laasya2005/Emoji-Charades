@@ -70,7 +70,7 @@ export default function GameBoard({ state, isActor }: GameBoardProps) {
       {/* Hint — progressive letter reveal */}
       {state.hint && !isActor && (
         <div className="bg-yellow-900/30 border border-yellow-600/50 rounded-lg px-2 py-2 text-center" role="status">
-          <span className="text-yellow-400 text-sm font-mono tracking-widest">
+          <span className="text-yellow-400 text-sm font-mono tracking-widest whitespace-pre">
             {state.hint.display}
           </span>
         </div>

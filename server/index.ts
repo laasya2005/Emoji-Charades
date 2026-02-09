@@ -1,6 +1,6 @@
 import express from "express";
 import http from "http";
-import { Server } from "socket.io";
+import { Server, Socket } from "socket.io";
 import cors from "cors";
 import path from "path";
 import fs from "fs";
@@ -83,6 +83,29 @@ function decrementRoomCount(code: string): void {
   }
 }
 
+function leaveCurrentRoom(socket: Socket): void {
+  const code = playerRooms.get(socket.id);
+  if (!code) return;
+
+  playerRooms.delete(socket.id);
+  socket.leave(code);
+  decrementRoomCount(code);
+
+  const room = rooms.get(code);
+  if (room) {
+    room.removePlayer(socket.id);
+
+    const hasConnected = room.players.some((p) => p.connected);
+    if (room.players.length === 0 || !hasConnected) {
+      room.destroy();
+      rooms.delete(code);
+      roomCounts.delete(code);
+    }
+  }
+
+  broadcastRoomStats(code);
+}
+
 function broadcastRoomState(room: GameRoom): void {
   for (const player of room.players) {
     io.to(player.id).emit("room-state", room.getState(player.id));
@@ -104,6 +127,43 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("leave-room", () => {
+    leaveCurrentRoom(socket);
+    broadcastGlobalStats();
+  });
+
+  socket.on("kick-player", (data: { targetId: string }) => {
+    const code = playerRooms.get(socket.id);
+    if (!code) return;
+    const room = rooms.get(code);
+    if (!room) return;
+    if (room.hostId !== socket.id) return;
+    if (!data?.targetId || data.targetId === socket.id) return;
+
+    const target = room.players.find((p) => p.id === data.targetId);
+    if (!target) return;
+
+    room.removePlayer(data.targetId);
+    playerRooms.delete(data.targetId);
+    decrementRoomCount(code);
+
+    const targetSocket = io.sockets.sockets.get(data.targetId);
+    if (targetSocket) {
+      targetSocket.leave(code);
+      targetSocket.emit("kicked", { message: "You were removed from the room by the host" });
+    }
+
+    const hasConnected = room.players.some((p) => p.connected);
+    if (room.players.length === 0 || !hasConnected) {
+      room.destroy();
+      rooms.delete(code);
+      roomCounts.delete(code);
+    }
+
+    broadcastRoomStats(code);
+    broadcastGlobalStats();
+  });
+
   socket.on("create-room", (data: { playerName: string }, callback) => {
     if (typeof callback !== "function") return;
 
@@ -111,6 +171,8 @@ io.on("connection", (socket) => {
     if (!name) {
       return callback({ success: false, error: "Invalid player name" });
     }
+
+    leaveCurrentRoom(socket);
 
     if (rooms.size >= MAX_ROOMS) {
       return callback({ success: false, error: "Server is full, try again later" });
@@ -151,6 +213,8 @@ io.on("connection", (socket) => {
     if (!code) {
       return callback({ success: false, error: "Invalid room code" });
     }
+
+    leaveCurrentRoom(socket);
 
     const room = rooms.get(code);
     if (!room) {

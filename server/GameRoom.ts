@@ -136,25 +136,7 @@ export class GameRoom {
   disconnectPlayer(id: string): void {
     const player = this.players.find((p) => p.id === id);
     if (!player) return;
-    player.connected = false;
-
-    if (this.phase === "LOBBY") {
-      this.removePlayer(id);
-      return;
-    }
-
-    const connectedCount = this.players.filter((p) => p.connected).length;
-    if (connectedCount < 2) {
-      this.endGame();
-      return;
-    }
-
-    if (this.currentActorId === id) {
-      this.clearAllTimers();
-      this.advanceTurn();
-    }
-
-    this.onStateChange();
+    this.removePlayer(id);
   }
 
   get currentActorId(): string | undefined {
@@ -261,7 +243,7 @@ export class GameRoom {
     for (let i = 0; i < this.currentWord.length; i++) {
       const ch = this.currentWord[i];
       if (ch === " ") {
-        display += "   ";
+        display += "  \u00A0  ";
       } else if (!/[a-zA-Z0-9]/.test(ch)) {
         display += ch;
       } else if (revealed.has(i)) {

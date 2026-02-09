@@ -32,6 +32,7 @@ function RoomContent() {
     updateEmojis,
     submitGuess,
     returnToLobby,
+    kickPlayer,
     getSocketId,
   } = useSocket();
 
@@ -146,6 +147,7 @@ function RoomContent() {
           maxPlayers={maxPlayers}
           onStart={startGame}
           onUpdateSettings={updateSettings}
+          onKick={kickPlayer}
         />
       </div>
     );

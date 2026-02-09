@@ -54,6 +54,10 @@ export function useSocket() {
       setRoomOnline(data.onlineInRoom);
       if (data.maxPlayers != null) setMaxPlayers(data.maxPlayers);
     };
+    const onKicked = (data: { message: string }) => {
+      setRoomState(null);
+      setError(data.message);
+    };
 
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
@@ -61,6 +65,7 @@ export function useSocket() {
     socket.on("error-msg", onError);
     socket.on("stats:global", onGlobalStats);
     socket.on("stats:room", onRoomStats);
+    socket.on("kicked", onKicked);
 
     if (socket.connected) {
       setConnected(true);
@@ -74,6 +79,7 @@ export function useSocket() {
       socket.off("error-msg", onError);
       socket.off("stats:global", onGlobalStats);
       socket.off("stats:room", onRoomStats);
+      socket.off("kicked", onKicked);
     };
   }, []);
 
@@ -152,6 +158,7 @@ export function useSocket() {
     updateEmojis: useCallback((emojis: string[]) => emit("emoji-update", { emojis }), [emit]),
     submitGuess: useCallback((text: string) => emit("guess", { text }), [emit]),
     returnToLobby: useCallback(() => emit("return-to-lobby"), [emit]),
+    kickPlayer: useCallback((targetId: string) => emit("kick-player", { targetId }), [emit]),
     getSocketId: useCallback(() => getSocket().id || "", []),
   };
 }

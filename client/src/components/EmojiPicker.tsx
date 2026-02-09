@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import dynamic from "next/dynamic";
+import { Theme, EmojiStyle } from "emoji-picker-react";
 
 const Picker = dynamic(() => import("emoji-picker-react"), { ssr: false });
 
@@ -74,11 +75,13 @@ export default function EmojiPickerPanel({ emojis, onUpdate }: EmojiPickerProps)
 
       {/* Picker */}
       {showPicker && (
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-[350px]">
           <Picker
             onEmojiClick={addEmoji}
             width="100%"
             height="100%"
+            theme={Theme.DARK}
+            emojiStyle={EmojiStyle.NATIVE}
             searchDisabled={false}
             skinTonesDisabled
             previewConfig={{ showPreview: false }}

@@ -9,9 +9,10 @@ interface LobbyProps {
   maxPlayers: number;
   onStart: () => void;
   onUpdateSettings: (s: { roundsPerPlayer?: number; turnDuration?: number }) => void;
+  onKick: (targetId: string) => void;
 }
 
-export default function Lobby({ state, isHost, roomOnline, maxPlayers, onStart, onUpdateSettings }: LobbyProps) {
+export default function Lobby({ state, isHost, roomOnline, maxPlayers, onStart, onUpdateSettings, onKick }: LobbyProps) {
   const copyCode = () => {
     navigator.clipboard.writeText(state.code);
   };
@@ -43,10 +44,18 @@ export default function Lobby({ state, isHost, roomOnline, maxPlayers, onStart, 
             <div key={p.id} className="flex items-center gap-2 bg-slate-700 rounded-lg px-3 py-2">
               <span className="text-lg">👤</span>
               <span className="font-medium">{p.name}</span>
-              {p.id === state.hostId && (
+              {p.id === state.hostId ? (
                 <span className="text-xs bg-indigo-600 px-2 py-0.5 rounded-full ml-auto">
                   Host
                 </span>
+              ) : isHost && (
+                <button
+                  onClick={() => onKick(p.id)}
+                  className="ml-auto text-xs text-red-400 hover:text-red-300 hover:bg-red-500/20 px-2 py-0.5 rounded-full transition"
+                  aria-label={`Remove ${p.name}`}
+                >
+                  Remove
+                </button>
               )}
             </div>
           ))}
